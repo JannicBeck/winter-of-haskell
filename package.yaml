@@ -35,9 +35,11 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - winter-of-haskell
+    - aeson
+    - http-types
+    - text
     - wai
     - warp
-    - aeson
 
 tests:
   winter-of-haskell-test:
