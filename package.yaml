@@ -37,6 +37,7 @@ executables:
     - winter-of-haskell
     - wai
     - warp
+    - aeson
 
 tests:
   winter-of-haskell-test:

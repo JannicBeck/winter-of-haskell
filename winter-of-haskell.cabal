@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a168279f6b2276d1a10020271e23921ea4cf76bfd946ee385f7917a2e2abd7f4
+-- hash: b5d857d78d07bc8d688d6b4c9e1fed76fb3858f1710fbf26bad4fee1984cc559
 
 name:           winter-of-haskell
 version:        0.1.0.0
@@ -45,6 +45,8 @@ executable winter-of-haskell-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , wai
+    , warp
     , winter-of-haskell
   default-language: Haskell2010
 
