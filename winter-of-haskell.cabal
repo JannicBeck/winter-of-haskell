@@ -1,28 +1,29 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 73339bdad0444964dfe288d6b7dde70453b8f5e553c589fe272368df160cefdb
+-- hash: a168279f6b2276d1a10020271e23921ea4cf76bfd946ee385f7917a2e2abd7f4
 
 name:           winter-of-haskell
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/winter-of-haskell#readme>
-homepage:       https://github.com/githubuser/winter-of-haskell#readme
-bug-reports:    https://github.com/githubuser/winter-of-haskell/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2018 Author name here
+description:    Please see the README on GitHub at <https://github.com/jannicbeck/winter-of-haskell#readme>
+homepage:       https://github.com/jannicbeck/winter-of-haskell#readme
+bug-reports:    https://github.com/jannicbeck/winter-of-haskell/issues
+author:         Jannic Beck, Nicolas Beck
+maintainer:     jannicbeck@gmail.com
+copyright:      2018 Beck
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
+    ChangeLog.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/winter-of-haskell
+  location: https://github.com/jannicbeck/winter-of-haskell
 
 library
   exposed-modules:
@@ -57,6 +58,6 @@ test-suite winter-of-haskell-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , hspec >= 2.2
+    , hspec
     , winter-of-haskell
   default-language: Haskell2010

@@ -35,6 +35,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - winter-of-haskell
+    - wai
+    - warp
 
 tests:
   winter-of-haskell-test:
