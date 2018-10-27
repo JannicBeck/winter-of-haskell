@@ -1,11 +1,11 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-import Network.Wai (responseLBS, Application, pathInfo)
-import Network.HTTP.Types (status200)
-import Network.Wai.Handler.Warp (run)
-import Data.Aeson
-import Data.Text (Text)
-import GHC.Generics
+import           Data.Aeson
+import           Data.Text                (Text)
+import           GHC.Generics
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, pathInfo, responseLBS)
+import           Network.Wai.Handler.Warp (run)
 
 
 data User = User { name :: Text, email :: Text }
@@ -29,9 +29,9 @@ app req res = do
     putStrLn "I've done some IO here"
     res $
       case pathInfo req of
-        ["api"] -> secretSantaRoute
+        ["api"]    -> secretSantaRoute
         ["health"] -> healthRoute
-        _ -> anyRoute
+        _          -> anyRoute
 
 route = responseLBS
         status200
