@@ -44,5 +44,5 @@ healthRoute = route (encode ("I'm fine" :: Text))
 main :: IO ()
 main = do
   let port = 3000
-  putStrLn $ "Listening on port " ++ show port
+  putStrLn ("Listening on port " ++ show port)
   run port app
