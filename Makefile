@@ -1,2 +1,2 @@
 run: 
-	stack exec winter-of-haskell-exe
+	stack build && stack exec winter-of-haskell-exe
