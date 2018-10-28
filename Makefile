@@ -1,5 +1,5 @@
 run: 
-	stack build && stack exec winter-of-haskell-exe
+	stack build --exec winter-of-haskell-exe
 db:
 	docker run --name winter-postgres -e POSTGRES_PASSWORD=postgres -d -p 5432:5432 postgres
 admin:

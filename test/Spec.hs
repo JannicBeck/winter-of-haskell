@@ -2,7 +2,7 @@ import           Test.Hspec
 
 spec :: Spec
 spec =
-    describe "trivial test" $ do
+    describe "trivial test" $
         context "dont know" $
             it "55 should be 55" $
                 55 `shouldBe` 55
