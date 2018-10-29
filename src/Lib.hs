@@ -5,12 +5,12 @@ module Lib
     ) where
 
 import           Data.Aeson
-import           Data.Text                (Text)
+import           Data.Text                  (Text)
+import           Database.PostgreSQL.Simple
 import           GHC.Generics
-import           Network.HTTP.Types       (status200)
-import           Network.Wai              (Application, pathInfo, responseLBS)
-import           Network.Wai.Handler.Warp (run)
-
+import           Network.HTTP.Types         (status200)
+import           Network.Wai                (Application, pathInfo, responseLBS)
+import           Network.Wai.Handler.Warp   (run)
 
 data User = User { name :: Text, email :: Text }
           deriving (Generic, Show)
@@ -47,6 +47,13 @@ healthRoute = route (encode ("I'm fine" :: Text))
 
 listen :: IO ()
 listen = do
-  let port = 3000
+  port <- connectDb
   putStrLn ("Listening on port " ++ show port)
   run port app
+
+
+connectDb :: IO Int
+connectDb = do
+  conn <- connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+  [Only i] <- query_ conn "select 2000 + 1000"
+  return i
