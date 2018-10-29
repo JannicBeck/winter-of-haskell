@@ -10,4 +10,6 @@
 ## Setup
 install docker https://docs.docker.com/install
 
+`stack install hindent stylish-haskell`
+
 `apt-get install libpq-dev` or `brew install libpq-dev`
