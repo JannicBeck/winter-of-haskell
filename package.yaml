@@ -26,6 +26,8 @@ dependencies:
 - text
 - wai
 - warp
+- time
+- containers
 
 library:
   source-dirs: src
@@ -43,8 +45,10 @@ executables:
     - aeson
     - http-types
     - text
+    - time
     - wai
     - warp
+    - containers
 
 tests:
   winter-of-haskell-test:
