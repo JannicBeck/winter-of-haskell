@@ -12,6 +12,4 @@ install docker https://docs.docker.com/install
 
 `stack install hindent stylish-haskell`
 
-`apt-get install libpq-dev`
-
-`brew install postgresql` on mac
+`apt-get install libpq-dev` or `brew install postgresql` on mac
