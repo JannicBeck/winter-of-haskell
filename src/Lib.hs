@@ -4,66 +4,73 @@ module Lib
     ( listen
     ) where
 
-import           Data.Aeson
-import qualified Data.Set                 as Set
-import           Data.Text                (Text)
-import           Data.Time                (ZonedTime)
+import qualified Data.Aeson                 as Aeson
+import qualified Data.Set                   as Set
+import           Data.Text
+import qualified Data.Time                  as Time
+import qualified Database.PostgreSQL.Simple as DB
 import           GHC.Generics
-import           Network.HTTP.Types       (status200)
-import           Network.Wai              (Application, pathInfo, responseLBS)
-import           Network.Wai.Handler.Warp (run)
-
+import qualified Network.HTTP.Types         as HTTPTypes
+import qualified Network.Wai                as Wai
+import qualified Network.Wai.Handler.Warp   as Warp
 
 data User = User { userName :: Text, userEmail :: Text }
           deriving (Generic, Show, Eq, Ord)
 
-instance ToJSON User where
+
+instance Aeson.ToJSON User where
   -- No need to provide a toJSON implementation.
 
   -- For efficiency, we write a simple toEncoding implementation, as
   -- the default version uses toJSON.
-  toEncoding = genericToEncoding defaultOptions
+  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
 
-instance FromJSON User
+instance Aeson.FromJSON User
   -- No need to provide a parseJSON implementation.
 
 data Group = Group { groupName :: Text, groupMembers :: Set.Set User }
            deriving (Generic, Show)
-data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe ZonedTime }
+data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe Time.ZonedTime }
                   deriving (Generic, Show)
 
-instance ToJSON Group where
-  toEncoding = genericToEncoding defaultOptions
+instance Aeson.ToJSON Group where
+  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
 
-instance FromJSON Group
+instance Aeson.FromJSON Group
 
 jannic = User { userName = "Jannic Beck", userEmail = "jannicbeck@gmail.com" }
+jj = User { userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
+jb = User { userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { groupName = "Christmas", groupMembers = Set.fromList([jannic, nico]) }
+g = Group { groupName = "Christmas", groupMembers = Set.fromList([jannic, nico, jb, jj]) }
 
--- somehow putStrLn is executed twice when visiting a route
-app :: Application
-app req res = do
-    putStrLn "I've done some IO here"
-    res $
-      case pathInfo req of
+app :: Wai.Application
+app req res = res $
+      case Wai.pathInfo req of
         ["users"]  -> usersRoute
         ["groups"] -> groupsRoute
         ["health"] -> healthRoute
         _          -> anyRoute
 
-route = responseLBS
-        status200
+route = Wai.responseLBS
+        HTTPTypes.status200
         [("Content-Type", "application/json")]
 
-anyRoute = route (encode ("Welcome to Secret Santa!" :: Text))
-usersRoute = route (encode jannic)
-groupsRoute = route (encode g)
-healthRoute = route (encode ("I'm fine" :: Text))
+anyRoute = route (Aeson.encode ("Welcome to Secret Santa!" :: Text))
+usersRoute = route (Aeson.encode jannic)
+groupsRoute = route (Aeson.encode g)
+healthRoute = route (Aeson.encode ("I'm fine" :: Text))
 
 listen :: IO ()
 listen = do
-  let port = 3000
-  putStrLn ("Listening on port " ++ show port)
-  run port app
+  port <- connectDb
+  putStrLn $ "Listening on port " ++ show port
+  Warp.run port app
+
+
+connectDb :: IO Int
+connectDb = do
+  conn <- DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+  [DB.Only i] <- DB.query_ conn "select 2000 + 1000"
+  return i

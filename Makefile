@@ -1,8 +1,6 @@
 run: 
 	stack build --exec winter-of-haskell-exe
 db:
-	docker run --name winter-postgres -e POSTGRES_PASSWORD=postgres -d -p 5432:5432 postgres
-admin:
-	docker run -v pgadmin4:/home/pgadmin/.pgadmin -p 5050:5050 -e --link winter-postgres:winter-postgres --name pgadmin -d meedan/pgadmin; sleep 3; sensible-browser http://localhost:5050
+	docker run --name winter-postgres -e POSTGRES_USER=winter -e POSTGRES_PASSWORD=winter -e POSTGRES_DB=winter-db -d -p 5432:5432 postgres
 killAll:
 	docker stop $$(docker ps -a -q); docker rm $$(docker ps -a -q)
