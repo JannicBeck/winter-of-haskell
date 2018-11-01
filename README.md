@@ -13,3 +13,6 @@ install docker https://docs.docker.com/install
 `stack install hindent stylish-haskell`
 
 `apt-get install libpq-dev` or `brew install postgresql` on mac
+
+## Tutorials & Docs
+#### postgres-simple: https://ocharles.org.uk/posts/2012-12-03-postgresql-simple.html
