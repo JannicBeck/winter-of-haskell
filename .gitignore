@@ -5,3 +5,4 @@ winter-of-haskell.iml
 winter-of-haskell.cabal
 cabal.config
 *~
+out/*
