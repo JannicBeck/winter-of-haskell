@@ -5,15 +5,16 @@ module Lib
     ) where
 
 import           Control.Exception
-import qualified Data.Aeson                 as Aeson
-import qualified Data.Set                   as Set
+import qualified Data.Aeson                     as Aeson
+import qualified Data.Set                       as Set
 import           Data.Text
-import qualified Data.Time                  as Time
-import qualified Database.PostgreSQL.Simple as DB
+import qualified Data.Time                      as Time
+import qualified Database.PostgreSQL.Simple     as DB
 import           GHC.Generics
-import qualified Network.HTTP.Types         as HTTPTypes
-import qualified Network.Wai                as Wai
-import qualified Network.Wai.Handler.Warp   as Warp
+import qualified Network.HTTP.Types             as HTTPTypes
+import qualified Network.Wai                    as Wai
+import qualified Network.Wai.Application.Static as WaiStatic
+import qualified Network.Wai.Handler.Warp       as Warp
 
 data User = User { userName :: Text, userEmail :: Text }
           deriving (Generic, Show, Eq, Ord)
@@ -44,15 +45,18 @@ jj = User { userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
 jb = User { userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { groupName = "Christmas", groupMembers = Set.fromList([jannic, nico, jb, jj]) }
+g = Group { groupName = "Christmas", groupMembers = Set.fromList[jannic, nico, jb, jj] }
 
 app :: Wai.Application
-app req res = res $
-      case Wai.pathInfo req of
-        ["users"]  -> usersRoute
-        ["groups"] -> groupsRoute
-        ["health"] -> healthRoute
-        _          -> anyRoute
+app req res = case Wai.pathInfo req of
+        ["users"]  -> res usersRoute
+        ["groups"] -> res groupsRoute
+        ["health"] -> res healthRoute
+        _          -> staticApp req res
+
+staticApp :: Wai.Application
+staticApp = WaiStatic.staticApp $ WaiStatic.defaultFileServerSettings "./public"
+
 
 route = Wai.responseLBS
         HTTPTypes.status200
