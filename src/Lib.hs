@@ -4,15 +4,17 @@ module Lib
     ( listen
     ) where
 
-import qualified Data.Aeson                 as Aeson
-import qualified Data.Set                   as Set
-import qualified Data.Text                  as DT
-import qualified Data.Time                  as Time
-import qualified Database.PostgreSQL.Simple as DB
+import           Control.Exception
+import qualified Data.Aeson                     as Aeson
+import qualified Data.Set                       as Set
+import qualified Data.Text                      as DT
+import qualified Data.Time                      as Time
+import qualified Database.PostgreSQL.Simple     as DB
 import           GHC.Generics
-import qualified Network.HTTP.Types         as HTTPTypes
-import qualified Network.Wai                as Wai
-import qualified Network.Wai.Handler.Warp   as Warp
+import qualified Network.HTTP.Types             as HTTPTypes
+import qualified Network.Wai                    as Wai
+import qualified Network.Wai.Application.Static as WaiStatic
+import qualified Network.Wai.Handler.Warp       as Warp
 
 data User = User { userName :: DT.Text, userEmail :: DT.Text }
           deriving (Generic, Show, Eq, Ord)
@@ -43,15 +45,18 @@ jj = User { userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
 jb = User { userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { groupName = "Christmas", groupMembers = Set.fromList([jannic, nico, jb, jj]) }
+g = Group { groupName = "Christmas", groupMembers = Set.fromList[jannic, nico, jb, jj] }
 
 app :: Wai.Application
-app req res = res $
-      case Wai.pathInfo req of
-        ["users"]  -> usersRoute
-        ["groups"] -> groupsRoute
-        ["health"] -> healthRoute
-        _          -> anyRoute
+app req res = case Wai.pathInfo req of
+        ["users"]  -> res usersRoute
+        ["groups"] -> res groupsRoute
+        ["health"] -> res healthRoute
+        _          -> staticApp req res
+
+staticApp :: Wai.Application
+staticApp = WaiStatic.staticApp $ WaiStatic.defaultFileServerSettings "./public"
+
 
 basicLogger :: Wai.Middleware
 basicLogger app req res = do
@@ -86,9 +91,14 @@ listen = do
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ applyMiddleware app middlewareChain
 
-
 connectDb :: IO Int
 connectDb = do
-  conn <- DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
-  [DB.Only i] <- DB.query_ conn "select 2000 + 1000"
-  return i
+  maybeConn <- try $ DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+  case (maybeConn :: Either SomeException DB.Connection) of
+      Left e -> do
+                  putStrLn $ "Connection to db failed. Falling back to default port " ++ show defaultPort
+                  return defaultPort  -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
+                  where defaultPort = 3002
+      Right conn -> do
+                      [DB.Only port] <- DB.query_ conn "select 2000 + 1000"
+                      return port -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
