@@ -87,18 +87,19 @@ healthRoute = jsonRoute ("I'm fine" :: DT.Text)
 
 listen :: IO ()
 listen = do
-  port <- connectDb
+  port <- queryPort
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ applyMiddleware app middlewareChain
 
-connectDb :: IO Int
-connectDb = do
-  maybeConn <- try $ DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
-  case (maybeConn :: Either SomeException DB.Connection) of
-      Left e -> do
-                  putStrLn $ "Connection to db failed. Falling back to default port " ++ show defaultPort
-                  return defaultPort  -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
-                  where defaultPort = 3002
-      Right conn -> do
-                      [DB.Only port] <- DB.query_ conn "select 2000 + 1000"
-                      return port -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
+connectDb :: IO DB.Connection
+connectDb = DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+
+queryPort :: IO Int
+queryPort = do
+  res <- try $ connectDb
+        >>= (\conn -> DB.query_ conn "select 2000 + 1002" :: IO [DB.Only Int])
+        >>= (\[DB.Only port] -> return port)
+  case (res :: Either SomeException Int) of
+      Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
+                >> return defaultPort where defaultPort = 3002
+      Right port -> return port
