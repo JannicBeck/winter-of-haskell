@@ -69,21 +69,22 @@ healthRoute = route (Aeson.encode ("I'm fine" :: Text))
 
 listen :: IO ()
 listen = do
-  port <- connectDb
+  port <- queryPort
   putStrLn $ "Listening on port " ++ show port
   Warp.run port app
 
-connectDb :: IO Int
-connectDb = do
-  res <- try queryPort
+connectDb :: IO DB.Connection
+connectDb = DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+
+queryPort :: IO Int
+queryPort = do
+  res <- try (do
+          conn <- connectDb
+          [DB.Only port] <- DB.query_ conn "select 2000 + 1002"
+          return port)
   case (res :: Either SomeException Int) of
       Left e -> do
                   putStrLn $ show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort
                   return defaultPort  -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
                   where defaultPort = 3002
       Right conn -> return conn
-
-queryPort = do
-    conn <- DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
-    [DB.Only port] <- DB.query_ conn "select 2000 + 1002"
-    return port
