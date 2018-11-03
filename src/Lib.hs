@@ -81,4 +81,4 @@ queryPort = do
   res <- try $ connectDb >>= (\conn -> DB.query_ conn "select 2000 + 1002" :: IO [DB.Only Int]) >>= (\[DB.Only port] -> return port)
   case (res :: Either SomeException Int) of
       Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort) >> return defaultPort where defaultPort = 3002
-      Right conn -> return conn
+      Right port -> return port
