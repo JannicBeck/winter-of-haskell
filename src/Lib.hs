@@ -74,13 +74,18 @@ listen = do
   Warp.run port app
 
 connectDb :: IO Int
-connectDb = do
-  maybeConn <- try $ DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
-  case (maybeConn :: Either SomeException DB.Connection) of
-      Left e -> do
-                  putStrLn $ "Connection to db failed. Falling back to default port " ++ show defaultPort
-                  return defaultPort  -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
+connectDb = try (DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter")
+   >>= \maybeConn ->
+          case (maybeConn :: Either SomeException DB.Connection) of
+              Left e     -> useDefaultPort e
+              Right conn -> queryPort conn
+
+useDefaultPort :: SomeException -> IO Int
+useDefaultPort e = putStrLn (show e)
+                  >> putStrLn ("Connection to db failed. Falling back to default port " ++ show defaultPort)
+                  >> return defaultPort
                   where defaultPort = 3002
-      Right conn -> do
-                      [DB.Only port] <- DB.query_ conn "select 2000 + 1000"
-                      return port -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
+
+queryPort :: DB.Connection -> IO Int
+queryPort conn = DB.query_ conn "select 2000 + 1000"
+                 >>= \([DB.Only port]) -> return port
