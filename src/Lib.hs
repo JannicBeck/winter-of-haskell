@@ -6,7 +6,7 @@ module Lib
 
 import qualified Data.Aeson                 as Aeson
 import qualified Data.Set                   as Set
-import           Data.Text
+import qualified Data.Text                  as DT
 import qualified Data.Time                  as Time
 import qualified Database.PostgreSQL.Simple as DB
 import           GHC.Generics
@@ -14,7 +14,7 @@ import qualified Network.HTTP.Types         as HTTPTypes
 import qualified Network.Wai                as Wai
 import qualified Network.Wai.Handler.Warp   as Warp
 
-data User = User { userName :: Text, userEmail :: Text }
+data User = User { userName :: DT.Text, userEmail :: DT.Text }
           deriving (Generic, Show, Eq, Ord)
 
 
@@ -28,9 +28,9 @@ instance Aeson.ToJSON User where
 instance Aeson.FromJSON User
   -- No need to provide a parseJSON implementation.
 
-data Group = Group { groupName :: Text, groupMembers :: Set.Set User }
+data Group = Group { groupName :: DT.Text, groupMembers :: Set.Set User }
            deriving (Generic, Show)
-data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe Time.ZonedTime }
+data GroupOptions = GroupOptions { giftCostLimit :: Maybe DT.Text, dateOfDrawing :: Maybe Time.ZonedTime }
                   deriving (Generic, Show)
 
 instance Aeson.ToJSON Group where
@@ -53,20 +53,38 @@ app req res = res $
         ["health"] -> healthRoute
         _          -> anyRoute
 
+basicLogger :: Wai.Middleware
+basicLogger app req res = do
+  print $ Wai.requestMethod req
+  app req res
+
+detailedLogger :: Wai.Middleware
+detailedLogger app req res = do
+  print req
+  app req res
+
+middlewareChain = [basicLogger, detailedLogger]
+
+applyMiddleware :: Wai.Application -> [Wai.Middleware] -> Wai.Application
+applyMiddleware app chain = foldl (\acc m -> m acc) app middlewareChain
+
 route = Wai.responseLBS
         HTTPTypes.status200
         [("Content-Type", "application/json")]
 
-anyRoute = route (Aeson.encode ("Welcome to Secret Santa!" :: Text))
-usersRoute = route (Aeson.encode jannic)
-groupsRoute = route (Aeson.encode g)
-healthRoute = route (Aeson.encode ("I'm fine" :: Text))
+jsonRoute :: Aeson.ToJSON a => a -> Wai.Response
+jsonRoute = route . Aeson.encode
+
+anyRoute = jsonRoute ("Welcome to Secret Santa!" :: DT.Text)
+usersRoute = jsonRoute jannic
+groupsRoute = jsonRoute g
+healthRoute = jsonRoute ("I'm fine" :: DT.Text)
 
 listen :: IO ()
 listen = do
   port <- connectDb
   putStrLn $ "Listening on port " ++ show port
-  Warp.run port app
+  Warp.run port $ applyMiddleware app middlewareChain
 
 
 connectDb :: IO Int
