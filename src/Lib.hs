@@ -78,13 +78,7 @@ connectDb = DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user
 
 queryPort :: IO Int
 queryPort = do
-  res <- try (do
-          conn <- connectDb
-          [DB.Only port] <- DB.query_ conn "select 2000 + 1002"
-          return port)
+  res <- try (connectDb >>= (\conn -> DB.query_ conn "select 2000 + 1002" :: IO [DB.Only Int]) >>= (\[DB.Only port] -> return port))
   case (res :: Either SomeException Int) of
-      Left e -> do
-                  putStrLn $ show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort
-                  return defaultPort  -- fun fact the return here does not actually return a value but constructs an IO Int from an Int
-                  where defaultPort = 3002
+      Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort) >> return defaultPort where defaultPort = 3002
       Right conn -> return conn
