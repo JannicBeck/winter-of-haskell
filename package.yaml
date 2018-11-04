@@ -42,6 +42,10 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -fwarn-tabs
+    - -fwarn-incomplete-uni-patterns
+    - -fwarn-incomplete-record-updates
     dependencies:
     - winter-of-haskell
     - aeson
