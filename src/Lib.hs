@@ -6,6 +6,7 @@ module Lib
 
 import           Control.Exception
 import qualified Data.Aeson                     as Aeson
+import           Data.Function
 import qualified Data.Set                       as Set
 import qualified Data.Text                      as DT
 import qualified Data.Time                      as Time
@@ -70,9 +71,6 @@ detailedLogger app req res = do
 
 middlewareChain = [basicLogger, detailedLogger]
 
-applyMiddleware :: Wai.Application -> [Wai.Middleware] -> Wai.Application
-applyMiddleware app chain = foldl (\acc m -> m acc) app chain
-
 route = Wai.responseLBS
         HTTPTypes.status200
         [("Content-Type", "application/json")]
@@ -89,7 +87,7 @@ listen :: IO ()
 listen = do
   port <- queryPort
   putStrLn $ "Listening on port " ++ show port
-  Warp.run port $ applyMiddleware app middlewareChain
+  Warp.run port $ foldr ($) app middlewareChain
 
 connectDb :: IO DB.Connection
 connectDb = DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
