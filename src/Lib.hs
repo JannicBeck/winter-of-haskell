@@ -71,7 +71,7 @@ detailedLogger app req res = do
 middlewareChain = [basicLogger, detailedLogger]
 
 applyMiddleware :: Wai.Application -> [Wai.Middleware] -> Wai.Application
-applyMiddleware app chain = foldl (\acc m -> m acc) app middlewareChain
+applyMiddleware app chain = foldl (\acc m -> m acc) app chain
 
 route = Wai.responseLBS
         HTTPTypes.status200
