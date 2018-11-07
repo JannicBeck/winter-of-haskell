@@ -46,7 +46,7 @@ jj = User { userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
 jb = User { userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { groupName = "Christmas", groupMembers = Set.fromList[jannic, nico, jb, jj] }
+g = Group { groupName = "Christmas", groupMembers = Set.fromList [jannic, nico, jb, jj] }
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
@@ -89,8 +89,17 @@ listen = do
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
 
+connectInfo :: DB.ConnectInfo
+connectInfo = DB.ConnectInfo {
+      DB.connectHost = "localhost"
+    , DB.connectPort = 5432
+    , DB.connectUser = "winter"
+    , DB.connectPassword = "winter"
+    , DB.connectDatabase = "winter-db"
+    }
+
 connectDb :: IO DB.Connection
-connectDb = DB.connectPostgreSQL "host=localhost port=5432 dbname=winter-db user=winter password=winter"
+connectDb = DB.connectPostgreSQL $ DB.postgreSQLConnectionString connectInfo
 
 queryPort :: IO Int
 queryPort = do
