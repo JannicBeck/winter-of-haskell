@@ -104,9 +104,8 @@ connectDb = DB.connectPostgreSQL $ DB.postgreSQLConnectionString connectInfo
 queryPort :: IO Int
 queryPort = do
   res <- try $ connectDb
-        >>= (\conn -> DB.query_ conn "select 2000 + 1002" :: IO [DB.Only Int])
-        >>= (\[DB.Only port] -> return port)
-  case (res :: Either SomeException Int) of
+        >>= (\conn -> DB.query_ conn "select 2000 + 1002") :: IO (Either SomeException [DB.Only Int])
+  case res of
       Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
                 >> return defaultPort where defaultPort = 3002
-      Right port -> return port
+      Right [DB.Only port] -> return port
