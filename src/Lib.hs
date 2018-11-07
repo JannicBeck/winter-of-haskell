@@ -89,17 +89,14 @@ listen = do
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
 
-connectInfo :: DB.ConnectInfo
-connectInfo = DB.ConnectInfo {
+connectDb :: IO DB.Connection
+connectDb = DB.connect DB.defaultConnectInfo {
       DB.connectHost = "localhost"
     , DB.connectPort = 5432
     , DB.connectUser = "winter"
     , DB.connectPassword = "winter"
     , DB.connectDatabase = "winter-db"
     }
-
-connectDb :: IO DB.Connection
-connectDb = DB.connectPostgreSQL $ DB.postgreSQLConnectionString connectInfo
 
 queryPort :: IO Int
 queryPort = do
@@ -109,3 +106,4 @@ queryPort = do
       Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
                 >> return defaultPort where defaultPort = 3002
       Right [DB.Only port] -> return port
+
