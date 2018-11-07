@@ -101,7 +101,7 @@ connectDb = DB.connect DB.defaultConnectInfo {
 queryPort :: IO Int
 queryPort = do
   res <- try $ connectDb
-        >>= flip DB.query_ "select 2000 + 1002" :: IO (Either SomeException [DB.Only Int])
+        >>= (\conn -> DB.query_ conn "select 2000 + 1002") :: IO (Either SomeException [DB.Only Int])
   case res of
       Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
                 >> return defaultPort where defaultPort = 3002
