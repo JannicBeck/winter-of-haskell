@@ -6,7 +6,7 @@ run:
 
 db:
 	(docker inspect --type=image $(imageName)) || (docker build . -t $(imageName))
-	(docker start $(containerName)) || (docker run --name $(containerName) -p 5432:5432 $(imageName))
+	(docker start $(containerName)) || (docker run --name $(containerName) -d -p 5432:5432 $(imageName))
 	docker ps -a --filter "name=$(containerName)" --format "{{.Names}}: {{.Status}}"
 
 psql:
