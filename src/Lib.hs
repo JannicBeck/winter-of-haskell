@@ -98,6 +98,7 @@ connectDb = DB.connect DB.defaultConnectInfo {
     , DB.connectDatabase = "winter-db"
     }
 
+withDb :: (DB.Connection -> IO c) -> IO c
 withDb = bracket connectDb DB.close
 
 queryPort :: IO Int
