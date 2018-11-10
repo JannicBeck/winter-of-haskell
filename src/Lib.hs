@@ -98,11 +98,12 @@ connectDb = DB.connect DB.defaultConnectInfo {
     , DB.connectDatabase = "winter-db"
     }
 
+withDb = bracket connectDb DB.close
+
 queryPort :: IO Int
 queryPort = do
-  res <- try $ connectDb
-        >>= (\conn -> DB.query_ conn "select 2000 + 1002") :: IO (Either SomeException [DB.Only Int])
-  case res of
+  res <- try $ withDb $ \conn -> DB.query_ conn "select 2000 + 1002"
+  case (res :: Either SomeException [DB.Only Int]) of
       Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
                 >> return defaultPort where defaultPort = 3002
       Right [DB.Only port] -> return port
