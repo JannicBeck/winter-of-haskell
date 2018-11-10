@@ -1,32 +1,7 @@
--- SET SUPERUSER PASSWORD
-
-ALTER USER postgres WITH PASSWORD 'postgres';
-
--- Role: winter
-
--- DROP ROLE winter;
-
-CREATE ROLE winter LOGIN
-  PASSWORD 'winter'
-  NOSUPERUSER;
-
--- Database: "winter-db"
-
--- DROP DATABASE "winter-db";
-
-CREATE DATABASE "winter-db"
-  WITH OWNER = winter
-       ENCODING = 'UTF8'
-       TABLESPACE = pg_default
-       LC_COLLATE = 'en_US.utf8'
-       LC_CTYPE = 'en_US.utf8'
-       CONNECTION LIMIT = -1;
-
 \connect winter-db
 
 DROP SCHEMA IF EXISTS winter;
 CREATE SCHEMA IF NOT EXISTS winter AUTHORIZATION winter;
-
 
 -- -----------------------------------------------------
 -- Table winter.users
@@ -34,8 +9,8 @@ CREATE SCHEMA IF NOT EXISTS winter AUTHORIZATION winter;
 DROP TABLE IF EXISTS winter.users;
 
 CREATE TABLE IF NOT EXISTS winter.users (
-  id BIGINT NOT NULL,
-  name VARCHAR(45) NOT NULL,
+  id UUID NOT NULL,
+  name TEXT NOT NULL,
   email TEXT NOT NULL,
   PRIMARY KEY (id)
 );
@@ -49,11 +24,11 @@ CREATE UNIQUE INDEX email_UNIQUE ON winter.users (email ASC);
 DROP TABLE IF EXISTS winter.groups;
 
 CREATE TABLE IF NOT EXISTS winter.groups (
-  id BIGINT NOT NULL,
+  id UUID NOT NULL,
   name TEXT NOT NULL,
-  description TEXT NULL,
-  cost_limit NUMERIC NULL,
-  creator_id BIGINT NULL,
+  description TEXT,
+  cost_limit NUMERIC,
+  creator_id UUID,
   PRIMARY KEY (id),
   CONSTRAINT fk_groups_users_creator
     FOREIGN KEY (creator_id)
@@ -70,9 +45,9 @@ CREATE INDEX fk_groups_users_creator_idx ON winter.groups (creator_id ASC);
 DROP TABLE IF EXISTS winter.group_members;
 
 CREATE TABLE IF NOT EXISTS winter.group_members (
-  id_group_members BIGINT NOT NULL,
-  group_id BIGINT NOT NULL,
-  user_id BIGINT NOT NULL,
+  id_group_members UUID NOT NULL,
+  group_id UUID NOT NULL,
+  user_id UUID NOT NULL,
   PRIMARY KEY (id_group_members),
   CONSTRAINT fk_group_members_users
     FOREIGN KEY (user_id)

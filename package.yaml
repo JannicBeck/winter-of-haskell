@@ -29,6 +29,7 @@ dependencies:
 - wai-app-static
 - warp
 - time
+- uuid
 - containers
 
 library:

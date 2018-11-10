@@ -1,5 +1,6 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE OverloadedStrings        #-}
+
 module Lib
     ( listen
     ) where
@@ -7,46 +8,25 @@ module Lib
 import           Control.Exception
 import qualified Data.Aeson                     as Aeson
 import           Data.Function
+import           Data.Int                       (Int64)
 import qualified Data.Set                       as Set
 import qualified Data.Text                      as DT
-import qualified Data.Time                      as Time
+import           Data.UUID.V4                   as ID
 import qualified Database.PostgreSQL.Simple     as DB
-import           GHC.Generics
 import qualified Network.HTTP.Types             as HTTPTypes
 import qualified Network.Wai                    as Wai
 import qualified Network.Wai.Application.Static as WaiStatic
 import qualified Network.Wai.Handler.Warp       as Warp
 
-data User = User { userName :: DT.Text, userEmail :: DT.Text }
-          deriving (Generic, Show, Eq, Ord)
+import           Model.Group
+import           Model.User
 
+jannic = User { _id = "mock-id1", userName = "Jannic Beck", userEmail = "jannicbeck@gmail.com" }
+jj = User { _id = "mock-id2", userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
+jb = User { _id = "mock-id3", userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
+nico = User { _id = "mock-id4", userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-instance Aeson.ToJSON User where
-  -- No need to provide a toJSON implementation.
-
-  -- For efficiency, we write a simple toEncoding implementation, as
-  -- the default version uses toJSON.
-  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
-
-instance Aeson.FromJSON User
-  -- No need to provide a parseJSON implementation.
-
-data Group = Group { groupName :: DT.Text, groupMembers :: Set.Set User }
-           deriving (Generic, Show)
-data GroupOptions = GroupOptions { giftCostLimit :: Maybe DT.Text, dateOfDrawing :: Maybe Time.ZonedTime }
-                  deriving (Generic, Show)
-
-instance Aeson.ToJSON Group where
-  toEncoding = Aeson.genericToEncoding Aeson.defaultOptions
-
-instance Aeson.FromJSON Group
-
-jannic = User { userName = "Jannic Beck", userEmail = "jannicbeck@gmail.com" }
-jj = User { userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
-jb = User { userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
-nico = User { userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
-
-g = Group { groupName = "Christmas", groupMembers = Set.fromList [jannic, nico, jb, jj] }
+g = Group { _id = "mock-group-id2", groupName = "Christmas", groupMembers = Set.fromList [jannic, nico, jb, jj] }
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
@@ -85,9 +65,10 @@ healthRoute = jsonRoute ("I'm fine" :: DT.Text)
 
 listen :: IO ()
 listen = do
-  port <- queryPort
+  insertUser "Jannic Beck" "jannicbeck@gmail.com"
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
+  where port = 3002
 
 connectDb :: IO DB.Connection
 connectDb = DB.connect DB.defaultConnectInfo {
@@ -101,11 +82,11 @@ connectDb = DB.connect DB.defaultConnectInfo {
 withDb :: (DB.Connection -> IO c) -> IO c
 withDb = bracket connectDb DB.close
 
-queryPort :: IO Int
-queryPort = do
-  res <- try $ withDb $ \conn -> DB.query_ conn "select 2000 + 1002"
-  case (res :: Either SomeException [DB.Only Int]) of
-      Left e -> putStrLn (show e ++ "\nConnection to db failed. Falling back to default port " ++ show defaultPort)
-                >> return defaultPort where defaultPort = 3002
-      Right [DB.Only port] -> return port
-
+insertUser :: DT.Text -> DT.Text -> IO ()
+insertUser name mail = do
+  userId <- ID.nextRandom
+  let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
+  res <- try $ withDb $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
+  case (res :: Either SomeException Int64) of
+      Left e -> putStrLn ("Insert failed \n" ++ show e)
+      Right affectedRows -> putStrLn $ "Insert successful, affected rows: " ++ show affectedRows
