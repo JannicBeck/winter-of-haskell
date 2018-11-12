@@ -82,11 +82,14 @@ connectDb = DB.connect DB.defaultConnectInfo {
 withDb :: (DB.Connection -> IO c) -> IO c
 withDb = bracket connectDb DB.close
 
+withinTransaction :: (DB.Connection -> IO c) -> IO c
+withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
+
 insertUser :: DT.Text -> DT.Text -> IO ()
 insertUser name mail = do
   userId <- ID.nextRandom
   let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
-  res <- try $ withDb $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
+  res <- try $ withinTransaction $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
   case (res :: Either SomeException Int64) of
       Left e -> putStrLn ("Insert failed \n" ++ show e)
       Right affectedRows -> putStrLn $ "Insert successful, affected rows: " ++ show affectedRows
