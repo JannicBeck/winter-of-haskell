@@ -31,6 +31,7 @@ dependencies:
 - time
 - uuid
 - containers
+- resource-pool
 
 library:
   source-dirs: src
@@ -56,6 +57,7 @@ executables:
     - wai
     - warp
     - containers
+    - resource-pool
 
 tests:
   winter-of-haskell-test:
