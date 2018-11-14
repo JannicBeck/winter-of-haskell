@@ -1,11 +1,12 @@
 # winter-of-haskell
 ## Run
 - make run
-- runhaskell app/Main.hs
 ## Test
 - cabal test
 - stack test
-- runhaskell test/Spec.hs
+
+## Development
+- everytime database scripts in the `scripts` folder are changed run `make resetdb`
 
 ## Setup
 install docker https://docs.docker.com/install
