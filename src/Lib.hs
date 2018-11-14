@@ -65,7 +65,7 @@ healthRoute = jsonRoute ("I'm fine" :: DT.Text)
 
 listen :: IO ()
 listen = do
-  insertUser "Jannic Beck" "jannicbeck@gmail.com"
+  createUser "Jannic Beck" "jannicbeck@gmail.com"
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
@@ -85,8 +85,8 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-insertUser :: DT.Text -> DT.Text -> IO ()
-insertUser name mail = do
+createUser :: DT.Text -> DT.Text -> IO ()
+createUser name mail = do
   userId <- ID.nextRandom
   let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
   res <- try $ withinTransaction $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
