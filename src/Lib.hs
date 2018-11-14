@@ -103,7 +103,7 @@ createGroup name description creatorId userIds = do
   groupId <- ID.nextRandom
   withinTransaction $ \conn -> do
       DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
-      forM_ (Set.toList $ Set.insert creatorId userIds) $ \userId -> do
+      forM_ (Set.insert creatorId userIds) $ \userId -> do
         memberShipId <- ID.nextRandom
         DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
   return $ show groupId
