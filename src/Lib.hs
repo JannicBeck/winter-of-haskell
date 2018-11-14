@@ -13,6 +13,7 @@ import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
 import           Data.Text                        (Text)
 import qualified Data.Text                        as DT
+import           Data.Traversable
 import           Data.UUID.V4                     as ID
 import qualified Database.PostgreSQL.Simple       as DB
 import           Database.PostgreSQL.Simple.ToRow
@@ -68,8 +69,9 @@ healthRoute = jsonRoute ("I'm fine" :: Text)
 
 listen :: IO ()
 listen = do
-  userId <- createUser "Jannic Beck" "jannicbeck@gmail.com"
-  createGroup "Festivus" "A festivus for the rest of us" userId $ Set.fromList [userId]
+  jannicId <- createUser "Jannic Beck" "jannicbeck@gmail.com"
+  nicoId <- createUser "Nicolas Beck" "nico151089@gmail.com"
+  createGroup "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
@@ -101,6 +103,7 @@ createGroup name description creatorId userIds = do
   groupId <- ID.nextRandom
   withinTransaction $ \conn -> do
       DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
-      memberShipId <- ID.nextRandom
-      DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, creatorId)
+      forM (Set.toList $ Set.insert creatorId userIds) $ \userId -> do
+        memberShipId <- ID.nextRandom
+        DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
   return $ show groupId
