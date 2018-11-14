@@ -6,6 +6,7 @@ module Model.User
     ) where
 
 import qualified Data.Aeson                         as Aeson
+import           Data.Text                          (Text)
 import qualified Data.Text                          as DT
 import qualified Database.PostgreSQL.Simple         as DB
 import           Database.PostgreSQL.Simple.FromRow
@@ -13,7 +14,7 @@ import           Database.PostgreSQL.Simple.ToField
 import           Database.PostgreSQL.Simple.ToRow
 import           GHC.Generics
 
-data User = User { _id :: String, userName :: DT.Text, userEmail :: DT.Text }
+data User = User { _id :: String, userName :: Text, userEmail :: Text }
           deriving (Generic, Show, Eq, Ord)
 
 

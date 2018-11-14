@@ -10,6 +10,7 @@ import qualified Data.Aeson                     as Aeson
 import           Data.Function
 import           Data.Int                       (Int64)
 import qualified Data.Set                       as Set
+import           Data.Text                      (Text)
 import qualified Data.Text                      as DT
 import           Data.UUID.V4                   as ID
 import qualified Database.PostgreSQL.Simple     as DB
@@ -58,10 +59,10 @@ route = Wai.responseLBS
 jsonRoute :: Aeson.ToJSON a => a -> Wai.Response
 jsonRoute = route . Aeson.encode
 
-anyRoute = jsonRoute ("Welcome to Secret Santa!" :: DT.Text)
+anyRoute = jsonRoute ("Welcome to Secret Santa!" :: Text)
 usersRoute = jsonRoute jannic
 groupsRoute = jsonRoute g
-healthRoute = jsonRoute ("I'm fine" :: DT.Text)
+healthRoute = jsonRoute ("I'm fine" :: Text)
 
 listen :: IO ()
 listen = do
@@ -85,7 +86,7 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-createUser :: DT.Text -> DT.Text -> IO ()
+createUser :: Text -> Text -> IO ()
 createUser name mail = do
   userId <- ID.nextRandom
   let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
@@ -93,3 +94,4 @@ createUser name mail = do
   case (res :: Either SomeException Int64) of
       Left e -> putStrLn ("Insert failed \n" ++ show e)
       Right affectedRows -> putStrLn $ "Insert successful, affected rows: " ++ show affectedRows
+
