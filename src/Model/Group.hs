@@ -13,7 +13,7 @@ import           GHC.Generics
 import           Model.User
 
 
-data Group = Group { _id :: Text, groupName :: Text, groupMembers :: Set User }
+data Group = Group { _id :: Text, groupName :: Text, description :: Text, creator :: User, groupMembers :: Set User }
            deriving (Generic, Show)
 data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe ZonedTime }
                   deriving (Generic, Show)

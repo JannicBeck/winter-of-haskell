@@ -6,18 +6,20 @@ module Lib
     ) where
 
 import           Control.Exception
-import qualified Data.Aeson                     as Aeson
+import qualified Data.Aeson                       as Aeson
 import           Data.Function
-import           Data.Int                       (Int64)
-import qualified Data.Set                       as Set
-import           Data.Text                      (Text)
-import qualified Data.Text                      as DT
-import           Data.UUID.V4                   as ID
-import qualified Database.PostgreSQL.Simple     as DB
-import qualified Network.HTTP.Types             as HTTPTypes
-import qualified Network.Wai                    as Wai
-import qualified Network.Wai.Application.Static as WaiStatic
-import qualified Network.Wai.Handler.Warp       as Warp
+import           Data.Int                         (Int64)
+import           Data.Set                         (Set)
+import qualified Data.Set                         as Set
+import           Data.Text                        (Text)
+import qualified Data.Text                        as DT
+import           Data.UUID.V4                     as ID
+import qualified Database.PostgreSQL.Simple       as DB
+import           Database.PostgreSQL.Simple.ToRow
+import qualified Network.HTTP.Types               as HTTPTypes
+import qualified Network.Wai                      as Wai
+import qualified Network.Wai.Application.Static   as WaiStatic
+import qualified Network.Wai.Handler.Warp         as Warp
 
 import           Model.Group
 import           Model.User
@@ -27,7 +29,7 @@ jj = User { _id = "mock-id2", userName = "Jannic Beck", userEmail = "jannicbeck@
 jb = User { _id = "mock-id3", userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { _id = "mock-id4", userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { _id = "mock-group-id2", groupName = "Christmas", groupMembers = Set.fromList [jannic, nico, jb, jj] }
+g = Group { _id = "mock-group-id2", groupName = "Christmas", description = "Lorem ipsum", creator = nico,  groupMembers = Set.fromList [jannic, nico, jb, jj] }
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
@@ -66,7 +68,8 @@ healthRoute = jsonRoute ("I'm fine" :: Text)
 
 listen :: IO ()
 listen = do
-  createUser "Jannic Beck" "jannicbeck@gmail.com"
+  userId <- createUser "Jannic Beck" "jannicbeck@gmail.com"
+  createGroup "Festivus" "A festivus for the rest of us" userId $ Set.fromList [userId]
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
@@ -86,11 +89,18 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-createUser :: Text -> Text -> IO ()
+createUser :: Text -> Text -> IO String
 createUser name mail = do
   userId <- ID.nextRandom
   let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
-  res <- try $ withinTransaction $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
-  case (res :: Either SomeException Int64) of
-      Left e -> putStrLn ("Insert failed \n" ++ show e)
-      Right affectedRows -> putStrLn $ "Insert successful, affected rows: " ++ show affectedRows
+  withinTransaction $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
+  return $ show userId
+
+createGroup :: Text -> Text -> String -> Set String -> IO String
+createGroup name description creatorId userIds = do
+  groupId <- ID.nextRandom
+  withinTransaction $ \conn -> do
+      DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
+      memberShipId <- ID.nextRandom
+      DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, creatorId)
+  return $ show groupId
