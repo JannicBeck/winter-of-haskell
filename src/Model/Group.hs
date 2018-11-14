@@ -4,22 +4,18 @@ module Model.Group
     ( Group(..)
     ) where
 
-import qualified Data.Aeson                         as Aeson
-import qualified Data.Set                           as Set
-import           Data.Text                          (Text)
-import qualified Data.Text                          as DT
-import qualified Data.Time                          as Time
-import qualified Database.PostgreSQL.Simple         as DB
-import           Database.PostgreSQL.Simple.FromRow
-import           Database.PostgreSQL.Simple.ToField
-import           Database.PostgreSQL.Simple.ToRow
+import qualified Data.Aeson   as Aeson
+import           Data.Set     (Set)
+import           Data.Text    (Text)
+import qualified Data.Text    as DT
+import           Data.Time    (ZonedTime)
 import           GHC.Generics
 import           Model.User
 
 
-data Group = Group { _id :: Text, groupName :: Text, groupMembers :: Set.Set User }
+data Group = Group { _id :: Text, groupName :: Text, groupMembers :: Set User }
            deriving (Generic, Show)
-data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe Time.ZonedTime }
+data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe ZonedTime }
                   deriving (Generic, Show)
 
 instance Aeson.ToJSON Group where

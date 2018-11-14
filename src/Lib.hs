@@ -94,4 +94,3 @@ createUser name mail = do
   case (res :: Either SomeException Int64) of
       Left e -> putStrLn ("Insert failed \n" ++ show e)
       Right affectedRows -> putStrLn $ "Insert successful, affected rows: " ++ show affectedRows
-
