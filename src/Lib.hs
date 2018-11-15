@@ -14,7 +14,9 @@ import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
 import           Data.Text                        (Text)
 import qualified Data.Text                        as DT
-import           Data.UUID.V4                     as ID
+import           Data.Traversable
+import           Data.UUID
+import           Data.UUID.V4                     (nextRandom)
 import qualified Database.PostgreSQL.Simple       as DB
 import           Database.PostgreSQL.Simple.ToRow
 import qualified Network.HTTP.Types               as HTTPTypes
@@ -75,7 +77,9 @@ listen = do
     createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException String)
   case res of
     Left e        -> putStrLn $ "Failed to create group \n" ++ show e
-    Right groupId -> putStrLn $ "Created group with groupId " ++ groupId
+    Right groupId -> withDb $ \conn -> do
+      justInsertedGroup <- fetchGroup conn groupId
+      putStrLn $ "Created group with groupId " ++ show justInsertedGroup
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
@@ -97,16 +101,31 @@ withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda co
 
 createUser :: DB.Connection -> Text -> Text -> IO String
 createUser conn name mail = do
-  userId <- ID.nextRandom
+  userId <- nextRandom
   let user = User { _id = show userId, userName = name, userEmail =  mail }
   DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
   return $ show userId
 
 createGroup :: DB.Connection -> Text -> Text -> String -> Set String -> IO String
 createGroup conn name description creatorId userIds = do
-  groupId <- ID.nextRandom
+  groupId <- nextRandom
   DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
   forM_ (Set.insert creatorId userIds) $ \userId -> do
-    memberShipId <- ID.nextRandom
+    memberShipId <- nextRandom
     DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
   return $ show groupId
+
+
+fetchUser :: DB.Connection -> String -> IO User
+fetchUser conn userId = do
+  [user] <- (DB.query conn "select id, name, email from winter.users u where u.id = ?" $ DB.Only userId) :: IO [User]
+  return user
+
+
+fetchGroup :: DB.Connection -> String -> IO Group
+fetchGroup conn groupId = do
+  [(name, description, creatorId)] <- (DB.query conn "select name, description, creator_id from winter.groups g where g.id = ?" $ DB.Only groupId) :: IO [(Text, Text, UUID)]
+  memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
+  users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ show memberId
+  creator <- fetchUser conn $ show creatorId
+  return Group { _id = DT.pack groupId, groupName = name, description = description, creator = creator,  groupMembers = Set.fromList users }
