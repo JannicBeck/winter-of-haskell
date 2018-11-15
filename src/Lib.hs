@@ -69,9 +69,13 @@ healthRoute = jsonRoute ("I'm fine" :: Text)
 
 listen :: IO ()
 listen = do
-  jannicId <- createUser "Jannic Beck" "jannicbeck@gmail.com"
-  nicoId <- createUser "Nicolas Beck" "nico151089@gmail.com"
-  createGroup "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]
+  res <- try (withinTransaction $ \conn -> do
+    jannicId <- createUser conn "Jannic Beck" "jannicbeck@gmail.com"
+    nicoId <- createUser conn "Nicolas Beck" "nico151089@gmail.com"
+    createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException String)
+  case res of
+    Left e        -> putStrLn $ "Failed to create group \n" ++ show e
+    Right groupId -> putStrLn $ "Created group with groupId " ++ groupId
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
@@ -91,19 +95,18 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-createUser :: Text -> Text -> IO String
-createUser name mail = do
+createUser :: DB.Connection -> Text -> Text -> IO String
+createUser conn name mail = do
   userId <- ID.nextRandom
-  let randomUser = User { _id = show userId, userName = name, userEmail =  mail }
-  withinTransaction $ \conn -> DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" randomUser
+  let user = User { _id = show userId, userName = name, userEmail =  mail }
+  DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
   return $ show userId
 
-createGroup :: Text -> Text -> String -> Set String -> IO String
-createGroup name description creatorId userIds = do
+createGroup :: DB.Connection -> Text -> Text -> String -> Set String -> IO String
+createGroup conn name description creatorId userIds = do
   groupId <- ID.nextRandom
-  withinTransaction $ \conn -> do
-      DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
-      forM_ (Set.insert creatorId userIds) $ \userId -> do
-        memberShipId <- ID.nextRandom
-        DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
+  DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
+  forM_ (Set.insert creatorId userIds) $ \userId -> do
+    memberShipId <- ID.nextRandom
+    DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
   return $ show groupId
