@@ -79,7 +79,7 @@ listen = do
     Left e        -> putStrLn $ "Failed to create group \n" ++ show e
     Right groupId -> withDb $ \conn -> do
       justInsertedGroup <- fetchGroup conn groupId
-      putStrLn $ "Created group with groupId " ++ show justInsertedGroup
+      putStrLn $ "You just created: " ++ show justInsertedGroup
   putStrLn $ "Listening on port " ++ show port
   Warp.run port $ foldr ($) app middlewareChain
   where port = 3002
