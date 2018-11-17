@@ -30,9 +30,11 @@ instance Aeson.ToJSON User where
 instance Aeson.FromJSON User
   -- No need to provide a parseJSON implementation.
 
--- TODO:NBE this is a terrible hack because you don't  understand this fucking RowParser AT ALL!!!!!!
 instance DB.FromRow User where
-  fromRow = ((\a b c -> User (show a) b c) :: UUID -> Text -> Text -> User)<$> field <*> field <*> field
+  fromRow = User <$> uidToStringField <*> field <*> field
+
+uidToStringField :: RowParser String
+uidToStringField = show <$> (field :: RowParser UUID)
 
 instance ToRow User where
     toRow u = [toField (_id u),toField (userName u), toField (userEmail u)]
