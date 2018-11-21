@@ -32,7 +32,7 @@ jj = User { _id = "mock-id2", userName = "Jannic Beck", userEmail = "jannicbeck@
 jb = User { _id = "mock-id3", userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
 nico = User { _id = "mock-id4", userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
 
-g = Group { _id = "mock-group-id2", groupName = "Christmas", description = "Lorem ipsum", creator = nico,  groupMembers = Set.fromList [jannic, nico, jb, jj] }
+g = Group { _id = "mock-group-id2", groupName = "Christmas", description = "Lorem ipsum", creator = nico, groupMembers = Set.fromList [jannic, nico, jb, jj] }
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
@@ -102,7 +102,7 @@ withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda co
 createUser :: DB.Connection -> Text -> Text -> IO String
 createUser conn name mail = do
   userId <- nextRandom
-  let user = User { _id = show userId, userName = name, userEmail =  mail }
+  let user = User { _id = show userId, userName = name, userEmail = mail }
   DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
   return $ show userId
 
@@ -128,4 +128,4 @@ fetchGroup conn groupId = do
   memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
   users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ show memberId
   creator <- fetchUser conn $ show creatorId
-  return Group { _id = DT.pack groupId, groupName = name, description = description, creator = creator,  groupMembers = Set.fromList users }
+  return Group { _id = DT.pack groupId, groupName = name, description = description, creator = creator, groupMembers = Set.fromList users }
