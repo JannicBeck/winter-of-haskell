@@ -16,7 +16,7 @@ import           Database.PostgreSQL.Simple.ToField
 import           Database.PostgreSQL.Simple.ToRow
 import           GHC.Generics
 
-data User = User { _id :: String, userName :: Text, userEmail :: Text }
+data User = User { _id :: Text, userName :: Text, userEmail :: Text }
           deriving (Generic, Show, Eq, Ord)
 
 
@@ -33,8 +33,9 @@ instance Aeson.FromJSON User
 instance DB.FromRow User where
   fromRow = User <$> uidToStringField <*> field <*> field
 
-uidToStringField :: RowParser String
-uidToStringField = show <$> (field :: RowParser UUID)
+uidToStringField :: RowParser Text
+uidToStringField = toText <$> (field :: RowParser UUID)
 
 instance ToRow User where
     toRow u = [toField (_id u),toField (userName u), toField (userEmail u)]
+

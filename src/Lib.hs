@@ -10,6 +10,8 @@ import qualified Data.Aeson                       as Aeson
 import           Data.Foldable
 import           Data.Function
 import           Data.Int                         (Int64)
+import           Data.Map                         (Map)
+import qualified Data.Map                         as Map
 import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
 import           Data.Text                        (Text)
@@ -27,17 +29,11 @@ import qualified Network.Wai.Handler.Warp         as Warp
 import           Model.Group
 import           Model.User
 
-jannic = User { _id = "mock-id1", userName = "Jannic Beck", userEmail = "jannicbeck@gmail.com" }
-jj = User { _id = "mock-id2", userName = "Jannic Beck", userEmail = "jannicbeck@googlemail.com" }
-jb = User { _id = "mock-id3", userName = "Jannic Back", userEmail = "jannicbeck@gmail.com" }
-nico = User { _id = "mock-id4", userName = "Nicolas Beck", userEmail = "nico1510@gmail.com" }
-
-g = Group { _id = "mock-group-id2", groupName = "Christmas", description = "Lorem ipsum", creator = nico, groupMembers = Set.fromList [jannic, nico, jb, jj] }
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
-        ["users"]  -> res usersRoute
-        ["groups"] -> res groupsRoute
+        ["users"]  -> getAllUsers >>= res . jsonRoute
+        ["groups"] -> getAllGroups >>= res . jsonRoute
         ["health"] -> res healthRoute
         _          -> staticApp req res
 
@@ -64,9 +60,12 @@ route = Wai.responseLBS
 jsonRoute :: Aeson.ToJSON a => a -> Wai.Response
 jsonRoute = route . Aeson.encode
 
+
 anyRoute = jsonRoute ("Welcome to Secret Santa!" :: Text)
-usersRoute = jsonRoute jannic
-groupsRoute = jsonRoute g
+
+getAllUsers = withDb $ \conn -> fetchAllUsers conn
+getAllGroups = withDb $ \conn -> fetchGroupsById conn
+
 healthRoute = jsonRoute ("I'm fine" :: Text)
 
 listen :: IO ()
@@ -74,7 +73,7 @@ listen = do
   res <- try (withinTransaction $ \conn -> do
     jannicId <- createUser conn "Jannic Beck" "jannicbeck@gmail.com"
     nicoId <- createUser conn "Nicolas Beck" "nico151089@gmail.com"
-    createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException String)
+    createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException Text)
   case res of
     Left e        -> putStrLn $ "Failed to create group \n" ++ show e
     Right groupId -> withDb $ \conn -> do
@@ -99,33 +98,56 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-createUser :: DB.Connection -> Text -> Text -> IO String
+createUser :: DB.Connection -> Text -> Text -> IO Text
 createUser conn name mail = do
   userId <- nextRandom
-  let user = User { _id = show userId, userName = name, userEmail = mail }
+  let user = User (toText userId) name mail
   DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
-  return $ show userId
+  return $ toText userId
 
-createGroup :: DB.Connection -> Text -> Text -> String -> Set String -> IO String
+createGroup :: DB.Connection -> Text -> Text -> Text -> Set Text -> IO Text
 createGroup conn name description creatorId userIds = do
   groupId <- nextRandom
   DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
   forM_ (Set.insert creatorId userIds) $ \userId -> do
     memberShipId <- nextRandom
     DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
-  return $ show groupId
+  return $ toText groupId
 
 
-fetchUser :: DB.Connection -> String -> IO User
+fetchUser :: DB.Connection -> Text -> IO User
 fetchUser conn userId = do
   [user] <- (DB.query conn "select id, name, email from winter.users u where u.id = ?" $ DB.Only userId) :: IO [User]
   return user
 
+fetchAllUsers :: DB.Connection -> IO [User]
+fetchAllUsers conn = DB.query_ conn "select * from winter.users" :: IO [User]
 
-fetchGroup :: DB.Connection -> String -> IO Group
+fetchGroupsById :: DB.Connection -> IO GroupsById
+fetchGroupsById conn = do
+  results <- DB.query_
+    conn
+    "select user_id, u.name as u_name, email, group_id, creator_id, g.name as g_name, description from users u join group_members gm on u.id=gm.user_id join groups g on g.id=gm.group_id"
+    :: IO [(UUID, Text, Text, UUID, UUID, Text, Text)]
+  return $ getGroupsById results
+
+getGroupsById :: [(UUID, Text, Text, UUID, UUID, Text, Text)] -> GroupsById
+getGroupsById = foldl (\result (uId, uName, uMail, gId, creatorId, gName, gDescr) ->
+  if Map.notMember (toText gId) result then
+    Map.insert
+      (toText gId)
+      (Group (toText gId) gName gDescr (toText creatorId) $ Set.fromList [User (toText uId) uName uMail])
+      result
+  else
+    Map.adjust
+      (\g -> g { members = Set.insert (User (toText uId) uName uMail) (members g) })
+      (toText gId)
+      result
+  ) (Map.empty :: GroupsById)
+
+fetchGroup :: DB.Connection -> Text -> IO Group
 fetchGroup conn groupId = do
   [(name, description, creatorId)] <- (DB.query conn "select name, description, creator_id from winter.groups g where g.id = ?" $ DB.Only groupId) :: IO [(Text, Text, UUID)]
   memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
-  users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ show memberId
-  creator <- fetchUser conn $ show creatorId
-  return Group { _id = DT.pack groupId, groupName = name, description = description, creator = creator, groupMembers = Set.fromList users }
+  users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ toText memberId
+  return (Group groupId name description (toText creatorId) (Set.fromList users))
