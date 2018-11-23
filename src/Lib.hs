@@ -32,13 +32,21 @@ import           Model.User
 
 app :: Wai.Application
 app req res = case Wai.pathInfo req of
-        ["users"]  -> getAllUsers >>= res . jsonRoute
-        ["groups"] -> getAllGroups >>= res . jsonRoute
-        ["health"] -> res healthRoute
-        _          -> staticApp req res
+        ["user", id, "groups"] -> routeWithId id getGroupsOfUser req res
+        ["user", id]           -> routeWithId id getUser req res
+        ["users"]              -> getAllUsers >>= res . jsonRoute
+        ["groups"]             -> getAllGroups >>= res . jsonRoute
+        ["health"]             -> res healthRoute
+        _                      -> staticRoute req res
 
-staticApp :: Wai.Application
-staticApp = WaiStatic.staticApp $ WaiStatic.defaultFileServerSettings "./public"
+
+staticRoute :: Wai.Application
+staticRoute = WaiStatic.staticApp $ WaiStatic.defaultFileServerSettings "./public"
+
+routeWithId :: Aeson.ToJSON a => Text -> (Text -> IO a) -> Wai.Application
+routeWithId id fetch req res = case fromText id of
+  Just userId -> fetch (toText userId) >>= res . jsonRoute
+  Nothing     -> res $ jsonRoute ("Invalid uuid!" :: Text)
 
 
 basicLogger :: Wai.Middleware
@@ -62,6 +70,12 @@ jsonRoute = route . Aeson.encode
 
 
 anyRoute = jsonRoute ("Welcome to Secret Santa!" :: Text)
+
+getById :: Aeson.ToJSON a => (DB.Connection -> Text -> IO a) -> Text -> IO a
+getById fetch id = withDb $ \conn -> fetch conn id
+
+getGroupsOfUser = getById fetchGroupsOfUser
+getUser = getById fetchUser
 
 getAllUsers = withDb $ \conn -> fetchAllUsers conn
 getAllGroups = withDb $ \conn -> fetchGroupsById conn
@@ -151,3 +165,11 @@ fetchGroup conn groupId = do
   memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
   users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ toText memberId
   return (Group groupId name description (toText creatorId) (Set.fromList users))
+
+fetchGroupsOfUser :: DB.Connection -> Text -> IO [Group]
+fetchGroupsOfUser conn userId = do
+  results <- DB.query
+    conn
+    "select group_id from group_members gm join users u on u.id=gm.user_id where user_id=?" $ DB.Only userId
+    :: IO [DB.Only UUID]
+  forM results $ \(DB.Only gId) -> fetchGroup conn $ toText gId
