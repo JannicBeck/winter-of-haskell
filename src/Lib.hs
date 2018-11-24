@@ -123,6 +123,7 @@ createGroup :: DB.Connection -> Text -> Text -> UUID -> Set UUID -> IO UUID
 createGroup conn name description creatorId userIds = do
   groupId <- nextRandom
   DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
+  --TODO replace with executeMany
   forM_ (Set.insert creatorId userIds) $ \userId -> do
     memberShipId <- nextRandom
     DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
