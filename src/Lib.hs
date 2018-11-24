@@ -141,7 +141,7 @@ fetchGroupsById :: DB.Connection -> IO GroupsById
 fetchGroupsById conn = do
   results <- DB.query_
     conn
-    "select user_id, u.name as u_name, email, group_id, creator_id, g.name as g_name, description from users u join group_members gm on u.id=gm.user_id join groups g on g.id=gm.group_id"
+    "select user_id, u.name as u_name, email, group_id, creator_id, g.name as g_name, description from users u join group_members gm on u.id = gm.user_id join groups g on g.id = gm.group_id"
     :: IO [(UUID, Text, Text, UUID, UUID, Text, Text)]
   return $ getGroupsById results
 
@@ -170,6 +170,6 @@ fetchGroupsOfUser :: DB.Connection -> Text -> IO [Group]
 fetchGroupsOfUser conn userId = do
   results <- DB.query
     conn
-    "select group_id from group_members gm join users u on u.id=gm.user_id where user_id=?" $ DB.Only userId
+    "select group_id from group_members gm join users u on u.id = gm.user_id where user_id = ?" $ DB.Only userId
     :: IO [DB.Only UUID]
   forM results $ \(DB.Only gId) -> fetchGroup conn $ toText gId
