@@ -112,14 +112,14 @@ withDb = bracket connectDb DB.close
 withinTransaction :: (DB.Connection -> IO c) -> IO c
 withinTransaction lambda = withDb $ \conn -> DB.withTransaction conn $ lambda conn
 
-createUser :: DB.Connection -> Text -> Text -> IO Text
+createUser :: DB.Connection -> Text -> Text -> IO UUID
 createUser conn name mail = do
   userId <- nextRandom
-  let user = User (toText userId) name mail
+  let user = User userId name mail
   DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
-  return $ toText userId
+  return userId
 
-createGroup :: DB.Connection -> Text -> Text -> Text -> Set Text -> IO UUID
+createGroup :: DB.Connection -> Text -> Text -> UUID -> Set UUID -> IO UUID
 createGroup conn name description creatorId userIds = do
   groupId <- nextRandom
   DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
@@ -147,15 +147,15 @@ fetchGroupsById conn = do
 
 getGroupsById :: [(UUID, Text, Text, UUID, UUID, Text, Text)] -> GroupsById
 getGroupsById = foldl (\result (uId, uName, uMail, gId, creatorId, gName, gDescr) ->
-  if Map.notMember (toText gId) result then
+  if Map.notMember gId result then
     Map.insert
-      (toText gId)
-      (Group (toText gId) gName gDescr (toText creatorId) $ Set.fromList [User (toText uId) uName uMail])
+      gId
+      (Group gId gName gDescr creatorId $ Set.fromList [User uId uName uMail])
       result
   else
     Map.adjust
-      (\g -> g { members = Set.insert (User (toText uId) uName uMail) (members g) })
-      (toText gId)
+      (\g -> g { members = Set.insert (User uId uName uMail) (members g) })
+      gId
       result
   ) (Map.empty :: GroupsById)
 
@@ -164,7 +164,7 @@ fetchGroup conn groupId = do
   [(name, description, creatorId)] <- (DB.query conn "select name, description, creator_id from winter.groups g where g.id = ?" $ DB.Only groupId) :: IO [(Text, Text, UUID)]
   memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
   users <- fetchUsers conn $ DB.fromOnly <$> memberIds
-  return (Group (toText groupId) name description (toText creatorId) (Set.fromList users))
+  return (Group groupId name description creatorId (Set.fromList users))
 
 fetchGroupsOfUser :: DB.Connection -> UUID -> IO [Group]
 fetchGroupsOfUser conn userId = do

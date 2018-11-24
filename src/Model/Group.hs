@@ -11,12 +11,13 @@ import           Data.Set     (Set)
 import           Data.Text    (Text)
 import qualified Data.Text    as DT
 import           Data.Time    (ZonedTime)
+import           Data.UUID
 import           GHC.Generics
 import           Model.User
 
-type GroupsById = Map Text Group
+type GroupsById = Map UUID Group
 
-data Group = Group { _id :: Text, name :: Text, description :: Text, creatorId :: Text, members :: Set User }
+data Group = Group { _id :: UUID, name :: Text, description :: Text, creatorId :: UUID, members :: Set User }
            deriving (Generic, Show)
 data GroupOptions = GroupOptions { giftCostLimit :: Maybe Text, dateOfDrawing :: Maybe ZonedTime }
                   deriving (Generic, Show)
