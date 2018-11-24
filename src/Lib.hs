@@ -59,6 +59,7 @@ detailedLogger app req res = do
   print req
   app req res
 
+middlewareChain :: [Wai.Middleware]
 middlewareChain = [basicLogger, detailedLogger]
 
 route = Wai.responseLBS
@@ -69,16 +70,23 @@ jsonRoute :: Aeson.ToJSON a => a -> Wai.Response
 jsonRoute = route . Aeson.encode
 
 
+anyRoute :: Wai.Response
 anyRoute = jsonRoute ("Welcome to Secret Santa!" :: Text)
 
 getById :: Aeson.ToJSON a => (DB.Connection -> UUID -> IO a) -> UUID -> IO a
 getById fetch id = withDb $ \conn -> fetch conn id
 
+getGroupsOfUser :: UUID -> IO [Group]
 getGroupsOfUser = getById fetchGroupsOfUser
+
+getUser :: UUID -> IO User
 getUser = getById fetchUser
 
-getAllUsers = withDb $ \conn -> fetchAllUsers conn
-getAllGroups = withDb $ \conn -> fetchGroupsById conn
+getAllUsers :: IO [User]
+getAllUsers = withDb fetchAllUsers
+
+getAllGroups :: IO GroupsById
+getAllGroups = withDb fetchGroupsById
 
 healthRoute = jsonRoute ("I'm fine" :: Text)
 
