@@ -43,9 +43,9 @@ app req res = case Wai.pathInfo req of
 staticRoute :: Wai.Application
 staticRoute = WaiStatic.staticApp $ WaiStatic.defaultFileServerSettings "./public"
 
-routeWithId :: Aeson.ToJSON a => Text -> (Text -> IO a) -> Wai.Application
+routeWithId :: Aeson.ToJSON a => Text -> (UUID -> IO a) -> Wai.Application
 routeWithId id fetch req res = case fromText id of
-  Just userId -> fetch (toText userId) >>= res . jsonRoute
+  Just userId -> fetch userId >>= res . jsonRoute
   Nothing     -> res $ jsonRoute ("Invalid uuid!" :: Text)
 
 
@@ -71,7 +71,7 @@ jsonRoute = route . Aeson.encode
 
 anyRoute = jsonRoute ("Welcome to Secret Santa!" :: Text)
 
-getById :: Aeson.ToJSON a => (DB.Connection -> Text -> IO a) -> Text -> IO a
+getById :: Aeson.ToJSON a => (DB.Connection -> UUID -> IO a) -> UUID -> IO a
 getById fetch id = withDb $ \conn -> fetch conn id
 
 getGroupsOfUser = getById fetchGroupsOfUser
@@ -87,7 +87,7 @@ listen = do
   res <- try (withinTransaction $ \conn -> do
     jannicId <- createUser conn "Jannic Beck" "jannicbeck@gmail.com"
     nicoId <- createUser conn "Nicolas Beck" "nico151089@gmail.com"
-    createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException Text)
+    createGroup conn "Festivus" "A festivus for the rest of us" nicoId $ Set.fromList [jannicId, nicoId]) :: IO (Either SomeException UUID)
   case res of
     Left e        -> putStrLn $ "Failed to create group \n" ++ show e
     Right groupId -> withDb $ \conn -> do
@@ -119,20 +119,20 @@ createUser conn name mail = do
   DB.execute conn "insert into winter.users (id, name, email) values (?, ?, ?)" user
   return $ toText userId
 
-createGroup :: DB.Connection -> Text -> Text -> Text -> Set Text -> IO Text
+createGroup :: DB.Connection -> Text -> Text -> Text -> Set Text -> IO UUID
 createGroup conn name description creatorId userIds = do
   groupId <- nextRandom
   DB.execute conn "insert into winter.groups (id, name, description, creator_id) values (?, ?, ?, ?)" (groupId, name, description, creatorId)
   forM_ (Set.insert creatorId userIds) $ \userId -> do
     memberShipId <- nextRandom
     DB.execute conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" (memberShipId, groupId, userId)
-  return $ toText groupId
+  return groupId
 
+fetchUser :: DB.Connection -> UUID -> IO User
+fetchUser conn id = head <$> fetchUsers conn [id]
 
-fetchUser :: DB.Connection -> Text -> IO User
-fetchUser conn userId = do
-  [user] <- (DB.query conn "select id, name, email from winter.users u where u.id = ?" $ DB.Only userId) :: IO [User]
-  return user
+fetchUsers :: DB.Connection -> [UUID] -> IO [User]
+fetchUsers conn ids = DB.query conn "select id, name, email from winter.users u where u.id in ?" $ DB.Only $ DB.In ids
 
 fetchAllUsers :: DB.Connection -> IO [User]
 fetchAllUsers conn = DB.query_ conn "select * from winter.users" :: IO [User]
@@ -159,17 +159,17 @@ getGroupsById = foldl (\result (uId, uName, uMail, gId, creatorId, gName, gDescr
       result
   ) (Map.empty :: GroupsById)
 
-fetchGroup :: DB.Connection -> Text -> IO Group
+fetchGroup :: DB.Connection -> UUID -> IO Group
 fetchGroup conn groupId = do
   [(name, description, creatorId)] <- (DB.query conn "select name, description, creator_id from winter.groups g where g.id = ?" $ DB.Only groupId) :: IO [(Text, Text, UUID)]
   memberIds <- (DB.query conn "select user_id from winter.group_members m where m.group_id = ?" $ DB.Only groupId) :: IO [DB.Only UUID]
-  users <- forM memberIds $ \(DB.Only memberId)-> fetchUser conn $ toText memberId
-  return (Group groupId name description (toText creatorId) (Set.fromList users))
+  users <- fetchUsers conn $ DB.fromOnly <$> memberIds
+  return (Group (toText groupId) name description (toText creatorId) (Set.fromList users))
 
-fetchGroupsOfUser :: DB.Connection -> Text -> IO [Group]
+fetchGroupsOfUser :: DB.Connection -> UUID -> IO [Group]
 fetchGroupsOfUser conn userId = do
   results <- DB.query
     conn
     "select group_id from group_members gm join users u on u.id = gm.user_id where user_id = ?" $ DB.Only userId
     :: IO [DB.Only UUID]
-  forM results $ \(DB.Only gId) -> fetchGroup conn $ toText gId
+  forM results $ \(DB.Only gId) -> fetchGroup conn gId
