@@ -34,5 +34,5 @@ instance DB.FromRow User where
   fromRow = User <$> field <*> field <*> field
 
 instance ToRow User where
-    toRow u = [toField (_id u),toField (userName u), toField (userEmail u)]
+    toRow u = [toField (_id u), toField (userName u), toField (userEmail u)]
 
