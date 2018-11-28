@@ -144,12 +144,8 @@ createMemberships conn group = do
   DB.executeMany conn "insert into winter.group_members (id, group_id, user_id) values (?, ?, ?)" memberships
   return memberships
 
--- Booiiii this is ugly
 createMembership :: Group -> User -> IO Membership
-createMembership g u = do
-  mid <- nextRandom
-  let x = Membership mid (Model.Group._id g) (Model.User._id u)
-  return x
+createMembership g u = Membership (Model.Group._id g) (Model.User._id u) <$> nextRandom
 
 fetchGroup :: DB.Connection -> UUID -> IO Group
 fetchGroup conn groupId = do
@@ -184,3 +180,4 @@ fetchGroupsOfUser conn userId = do
     "select group_id from group_members gm join users u on u.id = gm.user_id where user_id = ?" $ DB.Only userId
     :: IO [DB.Only UUID]
   forM (DB.fromOnly <$> results) $ fetchGroup conn
+
