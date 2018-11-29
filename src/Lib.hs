@@ -145,7 +145,10 @@ createMemberships conn group = do
   return memberships
 
 createMembership :: Group -> User -> IO Membership
-createMembership g u = flip Membership (Model.Group._id g) (Model.User._id u) <$> nextRandom
+createMembership g u = do
+  id <- nextRandom
+  let m = Membership id (Model.Group._id g) (Model.User._id u)
+  return m
 
 fetchGroup :: DB.Connection -> UUID -> IO Group
 fetchGroup conn groupId = do
